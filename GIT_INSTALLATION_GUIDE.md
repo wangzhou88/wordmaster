@@ -54,8 +54,8 @@
 打开**命令提示符**（cmd）或**PowerShell**，运行：
 
 ```bash
-git config --global user.name "wzixb0"
-git config --global user.email "wzixb0@users.noreply.github.com"
+git config --global user.name "wangzhou88"
+git config --global user.email "wangzhou88@users.noreply.github.com"
 ```
 
 ### 验证安装：
@@ -83,7 +83,7 @@ git --version
 
 ### 记录仓库URL：
 创建成功后，页面会显示仓库URL：
-`https://github.com/wzixb0/wordmaster.git`
+`https://github.com/wangzhou88/wordmaster.git`
 
 ## 📤 第5步：推送代码到GitHub
 
@@ -106,7 +106,7 @@ git commit -m "WordMaster英语学习助手 - 准备APK构建"
 git branch -M main
 
 # 6. 添加远程仓库
-git remote add origin https://github.com/wzixb0/wordmaster.git
+git remote add origin https://github.com/wangzhou88/wordmaster.git
 
 # 7. 推送到GitHub
 git push -u origin main
@@ -114,13 +114,13 @@ git push -u origin main
 
 ### 输入GitHub凭据：
 推送时可能会要求输入GitHub用户名和密码：
-- **用户名：** wzixb0
+- **用户名：** wangzhou88
 - **密码：** 您的GitHub密码（如果启用了双重认证，需要使用个人访问令牌）
 
 ## ✅ 验证成功：
 
 推送成功后，您应该能够：
-1. 在 https://github.com/wzixb0/wordmaster 看到您的代码
+1. 在 https://github.com/wangzhou88/wordmaster 看到您的代码
 2. 所有文件都已上传到GitHub
 
 ## 🚨 如果遇到错误：
@@ -142,7 +142,7 @@ git push -u origin main
 **错误3：Permission denied**
 ```
 解决方案：检查GitHub权限
-确保您在wzixb0账户下有权限推送
+确保您在wangzhou88账户下有权限推送
 ```
 
 ---

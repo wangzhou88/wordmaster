@@ -15,7 +15,7 @@
 ## 🔐 第3步：登录GitHub账户
 
 1. 在GitHub Desktop中点击 "Sign in to GitHub.com"
-2. 使用您的GitHub账户登录（用户名：wzixb0）
+2. 使用您的GitHub账户登录（用户名：wangzhou88）
 3. 如果没有GitHub账户，请先在 https://github.com 注册
 
 ## 🗂️ 第4步：创建新仓库
@@ -67,7 +67,7 @@
 推送成功后，您应该看到：
 - ✅ 本地仓库和远程仓库同步
 - ✅ 所有文件已推送到GitHub
-- ✅ 可以在 https://github.com/wzixb0/wordmaster 看到代码
+- ✅ 可以在 https://github.com/wangzhou88/wordmaster 看到代码
 
 ## 🎯 下一步：APK构建
 

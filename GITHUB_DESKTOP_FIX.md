@@ -53,7 +53,7 @@ git init
 git add .
 git commit -m "WordMaster英语学习助手 - 准备APK构建"
 git branch -M main
-git remote add origin https://github.com/wzixb0/wordmaster.git
+git remote add origin https://github.com/wangzhou88/wordmaster.git
 git push -u origin main
 ```
 

@@ -1,6 +1,6 @@
 # 🚀 WordMaster 代码推送命令
 
-## GitHub 用户名：wzixb0
+## GitHub 用户名：wangzhou88
 
 ## 需要执行的Git命令（请在新的PowerShell窗口中执行）：
 
@@ -20,7 +20,7 @@ git add .
 git commit -m "WordMaster英语学习助手 - 准备APK构建"
 
 # 6. 添加远程仓库
-git remote add origin https://github.com/wzixb0/wordmaster.git
+git remote add origin https://github.com/wangzhou88/wordmaster.git
 
 # 7. 设置主分支
 git branch -M main

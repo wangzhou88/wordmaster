@@ -29,7 +29,7 @@ git branch -M main
 
 ### 6. 添加远程GitHub仓库
 ```bash
-git remote add origin https://github.com/wzixb0/wordmaster.git
+git remote add origin https://github.com/wangzhou88/wordmaster.git
 ```
 
 ### 7. 推送到GitHub（首次推送）
@@ -44,7 +44,7 @@ git push -u origin main
 如果您想一次性复制所有命令：
 
 ```bash
-cd c:\Users\admin\Downloads\wordmaster && git init && git add . && git commit -m "WordMaster英语学习助手 - 准备APK构建" && git branch -M main && git remote add origin https://github.com/wzixb0/wordmaster.git && git push -u origin main
+cd c:\Users\admin\Downloads\wordmaster && git init && git add . && git commit -m "WordMaster英语学习助手 - 准备APK构建" && git branch -M main && git remote add origin https://github.com/wangzhou88/wordmaster.git && git push -u origin main
 ```
 
 ---
@@ -55,7 +55,7 @@ cd c:\Users\admin\Downloads\wordmaster && git init && git add . && git commit -m
 
 ### 用户名：
 ```
-wzixb0
+wangzhou88
 ```
 
 ### 密码：
@@ -81,7 +81,7 @@ wzixb0
   Compressing objects: 100% (X/X), done.
   Writing objects: 100% (X/X), X.XX MiB | X.XX MiB/s, done.
   Total X (delta X), reused 0 (delta 0), pack-reused 0
-  To https://github.com/wzixb0/wordmaster.git
+  To https://github.com/wangzhou88/wordmaster.git
    * [new branch]      main -> main
   Branch 'main' set up to track remote branch 'main' from 'origin'.
   ```

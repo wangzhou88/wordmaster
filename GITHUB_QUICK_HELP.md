@@ -3,7 +3,7 @@
 ## 如果遇到登录问题：
 
 ### 账户信息：
-- GitHub用户名：wzixb0
+- GitHub用户名：wangzhou88
 - 如果忘记密码：https://github.com/password_reset
 - 如果没有账户：https://github.com/join
 

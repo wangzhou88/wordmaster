@@ -38,7 +38,7 @@ cd C:\Users\admin\Downloads\wordmaster
 "C:\Program Files\Git\bin\git.exe" commit -m "WordMaster英语学习助手 - 准备APK构建"
 
 # 6. 添加远程仓库
-"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/wzixb0/wordmaster.git
+"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/wangzhou88/wordmaster.git
 
 # 7. 设置主分支
 "C:\Program Files\Git\bin\git.exe" branch -M main
@@ -59,7 +59,7 @@ git status
 git init
 git add .
 git commit -m "WordMaster英语学习助手 - 准备APK构建"
-git remote add origin https://github.com/wzixb0/wordmaster.git
+git remote add origin https://github.com/wangzhou88/wordmaster.git
 git branch -M main
 git push -u origin main
 ```
@@ -67,7 +67,7 @@ git push -u origin main
 ## 🎯 第3步：启动APK构建
 
 推送成功后：
-1. 访问：https://github.com/wzixb0/wordmaster
+1. 访问：https://github.com/wangzhou88/wordmaster
 2. 进入 **Actions** 页面
 3. 启用 "Build Android APK" 工作流
 4. 点击 "Run workflow"
