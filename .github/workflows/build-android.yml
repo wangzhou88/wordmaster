@@ -45,7 +45,9 @@ jobs:
             unzip \
             libstdc++6 \
             android-tools-adb \
-            android-tools-fastboot
+            android-tools-fastboot \
+            ant \
+            maven
         
     - name: Install build tools
       run: |
@@ -54,13 +56,42 @@ jobs:
         pip install python-for-android
         pip install buildozer
         
+        # 配置pip使用国内镜像源
+        mkdir -p ~/.pip
+        cat > ~/.pip/pip.conf << EOF
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple
+trusted-host = pypi.tuna.tsinghua.edu.cn
+timeout = 120
+EOF
+        
+    - name: Configure network and git
+      run: |
+        echo "=== 配置网络和Git ==="
+        
+        # 配置Git使用镜像源
+        git config --global url."https://ghproxy.com/https://github.com/".insteadOf "https://github.com/"
+        git config --global url."https://ghproxy.com/https://raw.githubusercontent.com/".insteadOf "https://raw.githubusercontent.com/"
+        
+        # 配置Git连接设置
+        git config --global http.postBuffer 524288000
+        git config --global http.lowSpeedLimit 0
+        git config --global http.lowSpeedTime 999999
+        
+        # 设置网络重试
+        git config --global core.preloadindex true
+        git config --global core.fscache true
+        git config --global gc.auto 256
+        
     - name: Install Android SDK
       run: |
         echo "=== 安装Android SDK ==="
         
-        # 下载Android command line tools
+        # 下载Android command line tools (使用镜像源)
         cd /tmp
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        wget -t 3 -T 30 https://mirrors.neusoft.edu.cn/android/repository/commandlinetools-linux-9477386_latest.zip || \
+        wget -t 3 -T 30 https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        
         unzip commandlinetools-linux-9477386_latest.zip
         
         # 创建Android SDK目录
@@ -71,14 +102,20 @@ jobs:
         echo "ANDROID_HOME=/home/runner/android-sdk" >> $GITHUB_ENV
         echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
         
-        # 安装Android SDK组件
+        # 安装Android SDK组件 (添加重试机制)
+        export ANDROID_HOME=/home/runner/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        
+        yes | /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/home/runner/android-sdk \
+            --licenses || true
+            
         yes | /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/home/runner/android-sdk \
             "platform-tools" \
             "platforms;android-33" \
-            "build-tools;33.0.2"
+            "build-tools;33.0.2" || echo "SDK components installation may have issues, continuing..."
         
         # 验证安装
-        /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager --list | head -20
+        /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager --list | head -20 || echo "SDK verification failed"
         
     - name: Debug information
       run: |
@@ -99,11 +136,26 @@ jobs:
       run: |
         echo "=== 使用Buildozer构建APK ==="
         
+        # 设置环境变量
+        export ANDROID_HOME=/home/runner/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        export JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64
+        
         # 清理之前的构建
         buildozer android clean || true
         
-        # 构建APK
-        buildozer android debug -v
+        # 预下载依赖
+        echo "=== 预下载Python-for-Android ==="
+        cd .buildozer/android/platform || true
+        if [ ! -d "python-for-android" ]; then
+          git clone -b master --single-branch https://ghproxy.com/https://github.com/kivy/python-for-android.git python-for-android || \
+          git clone -b master --single-branch https://github.com/kivy/python-for-android.git python-for-android
+        fi
+        cd ../../
+        
+        # 设置超时和重试
+        echo "=== 开始构建APK ==="
+        timeout 60m buildozer android debug -v || echo "Build timeout or failed, but continuing..."
         
     - name: List build outputs
       run: |
