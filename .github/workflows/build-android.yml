@@ -48,7 +48,9 @@ jobs:
     - name: Install build tools
       run: |
         python -m pip install --upgrade pip setuptools wheel
-        pip install buildozer python-for-android
+        pip install cython
+        pip install python-for-android
+        pip install buildozer
         
     - name: Debug information
       run: |
