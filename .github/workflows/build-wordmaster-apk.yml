@@ -93,13 +93,17 @@ jobs:
         
         echo "=== Configure pip Mirror ==="
         mkdir -p ~/.pip
-        cat > ~/.pip/pip.conf << 'EOF'
-[global]
+        python -c "
+import os
+pip_conf = '''[global]
 index-url = https://pypi.tuna.tsinghua.edu.cn/simple
 trusted-host = pypi.tuna.tsinghua.edu.cn
 timeout = 120
-retries = 3
-EOF
+retries = 3'''
+with open(os.path.expanduser('~/.pip/pip.conf'), 'w') as f:
+    f.write(pip_conf)
+print('Pip mirror configuration created successfully')
+"
         
         echo "=== Install Python Build Dependencies ==="
         pip install cython==0.29.33
