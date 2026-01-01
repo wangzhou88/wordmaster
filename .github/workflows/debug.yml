@@ -1,0 +1,27 @@
+name: Debug GitHub Actions
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Info
+      run: |
+        echo "=== GitHub Actions 调试信息 ==="
+        echo "GitHub Run ID: ${{ github.run_id }}"
+        echo "GitHub Run Number: ${{ github.run_number }}"
+        echo "GitHub Repository: ${{ github.repository }}"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Commit: ${{ github.sha }}"
+        echo "=== 工作流文件检查 ==="
+        ls -la .github/workflows/
+        echo "=== 主分支文件检查 ==="
+        ls -la main.py buildozer.spec requirements.txt
+        echo "如果看到这条消息，说明GitHub Actions正常工作"
