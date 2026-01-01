@@ -89,11 +89,11 @@ jobs:
         # 配置pip使用国内镜像源
         mkdir -p ~/.pip
         cat > ~/.pip/pip.conf << EOF
-[global]
-index-url = https://pypi.tuna.tsinghua.edu.cn/simple
-trusted-host = pypi.tuna.tsinghua.edu.cn
-timeout = 120
-retries = 3
+        [global]
+        index-url = https://pypi.tuna.tsinghua.edu.cn/simple
+        trusted-host = pypi.tuna.tsinghua.edu.cn
+        timeout = 120
+        retries = 3
 EOF
         
     - name: Configure network and git
