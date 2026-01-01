@@ -1,50 +1,70 @@
-name: Build WordMaster APK
+name: 📱 WordMaster APK构建
 
 on:
   push:
     branches: [ main, master ]
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/*.yml'
       - 'main.py'
       - 'buildozer.spec'
       - 'requirements.txt'
-      - '*.py'
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '构建类型'
+        required: false
+        default: 'debug'
+        type: choice
+        options:
+        - debug
+        - release
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
+  build-apk:
+    name: 构建APK文件
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
     
-    strategy:
-      matrix:
-        python-version: ['3.11']
+    env:
+      PYTHON_VERSION: '3.11'
+      ANDROID_API: '31'
+      ANDROID_ARCH: 'arm64-v8a'
     
     steps:
-    - name: Checkout code
+    - name: 📥 检出代码
       uses: actions/checkout@v4
       
-    - name: Set up Python
+    - name: 🐍 设置Python环境
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
         
-    - name: Install system dependencies
+    - name: 📦 安装系统依赖
       run: |
+        echo "=== 更新系统包 ==="
         sudo apt-get update -y
+        
+        echo "=== 安装构建工具 ==="
         sudo apt-get install -y --no-install-recommends \
             build-essential \
             git \
             curl \
+            wget \
+            unzip \
+            software-properties-common \
+            apt-transport-https \
+            ca-certificates \
+            gnupg \
+            lsb-release
+            
+        echo "=== 安装编译依赖 ==="
+        sudo apt-get install -y --no-install-recommends \
             libssl-dev \
             zlib1g-dev \
             libbz2-dev \
             libreadline-dev \
             libsqlite3-dev \
-            wget \
             llvm \
             libncurses5-dev \
             libncursesw5-dev \
@@ -52,130 +72,183 @@ jobs:
             tk-dev \
             libffi-dev \
             liblzma-dev \
+            libstdc++6
+            
+        echo "=== 安装Android和Java工具 ==="
+        sudo apt-get install -y --no-install-recommends \
             openjdk-11-jdk \
-            unzip \
-            libstdc++6 \
             android-tools-adb \
             android-tools-fastboot \
             ant \
             maven
+            
+        echo "=== 验证安装 ==="
+        java -version
+        javac -version
         
-    - name: Install build tools
+    - name: 🔧 安装构建工具
       run: |
+        echo "=== 升级pip和基础工具 ==="
         python -m pip install --upgrade pip setuptools wheel
+        
+        echo "=== 配置pip镜像源 ==="
+        mkdir -p ~/.pip
+        cat > ~/.pip/pip.conf << 'EOF'
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple
+trusted-host = pypi.tuna.tsinghua.edu.cn
+timeout = 120
+retries = 3
+EOF
+        
+        echo "=== 安装Python构建依赖 ==="
         pip install cython==0.29.33
+        
+        echo "=== 安装Android构建工具 ==="
         pip install python-for-android==2024.6.15
         pip install buildozer==1.5.0
         
-        # 配置pip使用国内镜像源
-        mkdir -p ~/.pip
-        cat > ~/.pip/pip.conf << EOF
-        [global]
-        index-url = https://pypi.tuna.tsinghua.edu.cn/simple
-        trusted-host = pypi.tuna.tsinghua.edu.cn
-        timeout = 120
-        retries = 3
-EOF
+        echo "=== 验证构建工具 ==="
+        python --version
+        pip --version
+        buildozer --version
         
-    - name: Configure network and git
+    - name: 🌐 配置网络和Git
       run: |
-        echo "=== 配置网络和Git ==="
+        echo "=== 配置Git ==="
         
         # 配置Git使用镜像源
         git config --global url."https://ghproxy.com/https://github.com/".insteadOf "https://github.com/"
         git config --global url."https://ghproxy.com/https://raw.githubusercontent.com/".insteadOf "https://raw.githubusercontent.com/"
         
-        # 配置Git连接设置
+        # 配置Git连接优化
         git config --global http.postBuffer 524288000
         git config --global http.lowSpeedLimit 0
         git config --global http.lowSpeedTime 999999
-        
-        # 设置网络重试
         git config --global core.preloadindex true
         git config --global core.fscache true
         git config --global gc.auto 256
         
-    - name: Install Android SDK
-      run: |
-        echo "=== 安装Android SDK ==="
+        echo "=== Git配置验证 ==="
+        git config --global --list | head -10
         
-        # 创建Android SDK目录
+    - name: 📱 安装Android SDK
+      run: |
+        echo "=== 创建Android SDK目录 ==="
         mkdir -p /home/runner/android-sdk
         
-        # 下载Android command line tools (使用镜像源)
+        echo "=== 下载Android命令行工具 ==="
         cd /tmp
-        curl -L -o commandlinetools.zip \
-          "https://mirrors.neusoft.edu.cn/android/repository/commandlinetools-linux-9477386_latest.zip" || \
-          curl -L -o commandlinetools.zip \
-          "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
+        if curl -L -f -o commandlinetools.zip \
+          "https://mirrors.neusoft.edu.cn/android/repository/commandlinetools-linux-9477386_latest.zip"; then
+          echo "使用国内镜像下载成功"
+        else
+          echo "国内镜像失败，使用官方源"
+          curl -L -f -o commandlinetools.zip \
+            "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
+        fi
         
+        echo "=== 解压和配置SDK ==="
         unzip -q commandlinetools.zip
         mkdir -p /home/runner/android-sdk/cmdline-tools
         mv cmdline-tools /home/runner/android-sdk/cmdline-tools/latest
         
-        # 设置环境变量
+        echo "=== 设置环境变量 ==="
         echo "ANDROID_HOME=/home/runner/android-sdk" >> $GITHUB_ENV
         echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
         
-        # 安装Android SDK组件 (添加重试机制)
         export ANDROID_HOME=/home/runner/android-sdk
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
         
-        yes | /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/home/runner/android-sdk \
-            --licenses || true
-            
-        yes | /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/home/runner/android-sdk \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;33.0.2" || echo "SDK components installation may have issues, continuing..."
+        echo "=== 接受Android SDK许可证 ==="
+        yes | sdkmanager --sdk_root=/home/runner/android-sdk --licenses || true
         
-        # 验证安装
-        /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager --list | head -20 || echo "SDK verification failed"
+        echo "=== 安装Android SDK组件 ==="
+        sdkmanager --sdk_root=/home/runner/android-sdk \
+          "platform-tools" \
+          "platforms;android-${{ env.ANDROID_API }}" \
+          "build-tools;33.0.2"
         
-    - name: Build tools check
+        echo "=== 验证SDK安装 ==="
+        sdkmanager --list | head -10
+        
+    - name: 🔍 检查构建环境
       run: |
-        echo "检查构建工具版本..."
+        echo "=== 验证构建工具版本 ==="
         python --version
         pip --version
         buildozer --version
+        java -version
         
-    - name: Build APK
+        echo "=== 检查环境变量 ==="
+        echo "ANDROID_HOME: $ANDROID_HOME"
+        echo "JAVA_HOME: $JAVA_HOME"
+        echo "PYTHON_VERSION: ${{ env.PYTHON_VERSION }}"
+        
+    - name: 🚀 构建APK
       run: |
-        # 设置环境变量
+        echo "=== 设置构建环境变量 ==="
         export ANDROID_HOME=/home/runner/android-sdk
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        export JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64
+        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
         
-        # 检查构建环境
-        java -version
-        echo "ANDROID_HOME: $ANDROID_HOME"
-        buildozer --version
-        
-        # 清理之前的构建
+        echo "=== 清理之前的构建 ==="
         buildozer android clean || true
         
-        # 构建APK
-        echo "开始构建APK..."
-        buildozer android debug --verbose
+        echo "=== 开始构建APK ==="
+        echo "构建类型: ${{ github.event.inputs.build_type || 'debug' }}"
         
-    - name: Check build results
+        if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
+          echo "构建Release版本APK..."
+          buildozer android release --verbose
+        else
+          echo "构建Debug版本APK..."
+          buildozer android debug --verbose
+        fi
+        
+    - name: 📊 检查构建结果
       run: |
-        echo "检查构建结果..."
-        ls -la bin/ || echo "No bin directory found"
-        find . -name "*.apk" -type f | head -5
-        find . -name "*.aab" -type f | head -5
+        echo "=== 查找构建产物 ==="
         
-    - name: Upload APK artifact
+        if [ -d "bin" ]; then
+          echo "bin目录内容:"
+          ls -la bin/
+        else
+          echo "❌ 未找到bin目录"
+        fi
+        
+        echo "=== 查找APK文件 ==="
+        APK_FILES=$(find . -name "*.apk" -type f 2>/dev/null | head -5)
+        if [ -n "$APK_FILES" ]; then
+          echo "找到APK文件:"
+          echo "$APK_FILES"
+          for apk in $APK_FILES; do
+            echo "📱 $apk - 大小: $(du -h "$apk" | cut -f1)"
+          done
+        else
+          echo "❌ 未找到APK文件"
+        fi
+        
+        echo "=== 查找AAB文件 ==="
+        AAB_FILES=$(find . -name "*.aab" -type f 2>/dev/null | head -5)
+        if [ -n "$AAB_FILES" ]; then
+          echo "找到AAB文件:"
+          echo "$AAB_FILES"
+        else
+          echo "ℹ️ 未找到AAB文件（正常，仅Release版本会有）"
+        fi
+        
+    - name: 📦 上传APK产物
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: wordmaster-apk-${{ github.sha }}
+        name: wordmaster-apk-${{ github.sha }}-${{ github.event.inputs.build_type || 'debug' }}
         path: |
           bin/*.apk
           bin/*.aab
         retention-days: 30
         
-    - name: Upload build logs
+    - name: 📋 上传构建日志
       if: always()
       uses: actions/upload-artifact@v4
       with:
@@ -186,22 +259,54 @@ EOF
           *.log
         retention-days: 7
         
-    - name: Build summary
+    - name: 📝 构建摘要
       if: always()
       run: |
-        echo "## 构建结果摘要" >> $GITHUB_STEP_SUMMARY
+        echo "## 📱 WordMaster APK构建结果" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- **提交**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **分支**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Python版本**: ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **构建时间**: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 构建信息" >> $GITHUB_STEP_SUMMARY
+        echo "- **提交**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **分支**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **构建类型**: \`${{ github.event.inputs.build_type || 'debug' }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Python版本**: \`${{ env.PYTHON_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **构建时间**: \`$(date)\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **运行器**: \`${{ runner.os }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
-        if [ -f "bin/wordmaster-debug.apk" ]; then
+        echo "### 📱 构建结果" >> $GITHUB_STEP_SUMMARY
+        
+        # 检查构建结果
+        BUILD_SUCCESS=false
+        APK_COUNT=0
+        
+        if [ -d "bin" ]; then
+          APK_COUNT=$(find bin -name "*.apk" -type f 2>/dev/null | wc -l)
+          if [ $APK_COUNT -gt 0 ]; then
+            BUILD_SUCCESS=true
+          fi
+        fi
+        
+        if [ "$BUILD_SUCCESS" = true ]; then
           echo "✅ **APK构建成功**" >> $GITHUB_STEP_SUMMARY
-          echo "- 文件大小: $(du -h bin/wordmaster-debug.apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
-          echo "- 下载链接: 详见Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**生成的APK文件:**" >> $GITHUB_STEP_SUMMARY
+          find bin -name "*.apk" -type f 2>/dev/null | while read apk; do
+            size=$(du -h "$apk" | cut -f1)
+            filename=$(basename "$apk")
+            echo "- 📱 \`$filename\` ($size)" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**📥 下载链接**: 在页面底部的Artifacts区域下载APK文件" >> $GITHUB_STEP_SUMMARY
         else
           echo "❌ **APK构建失败**" >> $GITHUB_STEP_SUMMARY
-          echo "- 请检查构建日志了解详细错误信息" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**🔍 故障排除建议:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. 检查构建日志中的错误信息" >> $GITHUB_STEP_SUMMARY
+          echo "2. 确认 \`buildozer.spec\` 配置文件正确" >> $GITHUB_STEP_SUMMARY
+          echo "3. 验证项目依赖是否完整" >> $GITHUB_STEP_SUMMARY
+          echo "4. 查看 \`.buildozer\` 目录中的详细日志" >> $GITHUB_STEP_SUMMARY
         fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "*此构建由GitHub Actions自动生成*" >> $GITHUB_STEP_SUMMARY
