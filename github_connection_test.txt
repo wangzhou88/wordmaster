@@ -1,2 +1,0 @@
-GitHub connection test - created at 2026-01-01
-This file tests that GitHub connections work correctly after network configuration.
