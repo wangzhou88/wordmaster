@@ -151,79 +151,45 @@ EOF
         # 验证安装
         /home/runner/android-sdk/cmdline-tools/latest/bin/sdkmanager --list | head -20 || echo "SDK verification failed"
         
-    - name: Debug information
+    - name: Build tools check
       run: |
-        echo "=== 系统信息 ==="
-        lsb_release -a
-        df -h
-        free -m
-        
-        echo "=== Python信息 ==="
+        echo "检查构建工具版本..."
         python --version
         pip --version
+        buildozer --version
         
-        echo "=== 构建工具信息 ==="
-        buildozer --version || echo "Buildozer not found"
-        which p4a || echo "python-for-android not found"
-        
-    - name: Configure build environment
+    - name: Build APK
       run: |
-        echo "=== 配置构建环境 ==="
-        
         # 设置环境变量
         export ANDROID_HOME=/home/runner/android-sdk
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
         export JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64
         
-        # 验证关键工具
-        echo "验证工具版本:"
+        echo "开始构建APK..."
         java -version || echo "Java not found"
         echo "ANDROID_HOME: $ANDROID_HOME"
         ls $ANDROID_HOME/cmdline-tools/latest/bin/ || echo "Android tools not found"
         buildozer --version || echo "Buildozer not found"
         
-    - name: Pre-build setup
-      run: |
-        echo "=== 构建前准备 ==="
-        
-        # 设置环境变量
-        export ANDROID_HOME=/home/runner/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        
-        # 检查项目文件
-        ls -la buildozer.spec || echo "buildozer.spec not found"
-        ls -la main.py || echo "main.py not found"
-        ls -la requirements.txt || echo "requirements.txt not found"
-        
-        # 清理之前的构建
-        buildozer android clean || true
-        
     - name: Build APK
       run: |
-        echo "=== 开始构建APK ==="
-        
         # 设置环境变量
         export ANDROID_HOME=/home/runner/android-sdk
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
         export JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64
         
+        # 清理之前的构建
+        buildozer android clean || true
+        
         # 构建APK
-        echo "执行构建命令..."
+        echo "开始构建APK..."
         buildozer android debug --verbose
-        
-    - name: List build outputs
+    - name: Check build results
       run: |
-        echo "=== 构建产物列表 ==="
+        echo "检查构建结果..."
         ls -la bin/ || echo "No bin directory found"
-        find . -name "*.apk" || echo "No APK files found"
-        find . -name "*.aab" || echo "No AAB files found"
-        
-    - name: List build outputs
-      run: |
-        echo "=== 检查构建产物 ==="
-        find . -name "*.apk" -type f | head -10
-        find . -name "*.aab" -type f | head -10
-        ls -la bin/ 2>/dev/null || echo "bin目录不存在"
+        find . -name "*.apk" -type f | head -5
+        find . -name "*.aab" -type f | head -5
         
     - name: Upload APK artifact
       if: always()
