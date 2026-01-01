@@ -11,26 +11,7 @@ on:
       - '*.py'
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Build type'
-        required: true
-        default: 'debug'
-        type: choice
-        options:
-        - debug
-        - release
-      python_version:
-        description: 'Python version'
-        required: true
-        default: '3.11'
-        type: choice
-        options:
-        - '3.9'
-        - '3.10'
-        - '3.11'
-        - '3.12'
+  workflow_dispatch: {}
 
 jobs:
   build:
