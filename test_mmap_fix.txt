@@ -1,0 +1,2 @@
+Git mmap error test - created at 2026-01-01
+This file is for testing that Git operations work correctly after the mmap error fixes.
