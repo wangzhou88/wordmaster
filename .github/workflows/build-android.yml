@@ -93,13 +93,12 @@ jobs:
         
         echo "=== 配置pip镜像源 ==="
         mkdir -p ~/.pip
-        cat > ~/.pip/pip.conf << 'EOF'
-[global]
-index-url = https://pypi.tuna.tsinghua.edu.cn/simple
-trusted-host = pypi.tuna.tsinghua.edu.cn
-timeout = 120
-retries = 3
-EOF
+        echo '[global]' > ~/.pip/pip.conf
+        echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> ~/.pip/pip.conf
+        echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> ~/.pip/pip.conf
+        echo 'timeout = 120' >> ~/.pip/pip.conf
+        echo 'retries = 3' >> ~/.pip/pip.conf
+        echo "Pip镜像配置创建成功"
         
         echo "=== 安装Python构建依赖 ==="
         pip install cython==0.29.33
