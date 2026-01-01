@@ -166,11 +166,31 @@ $RECYCLE.BIN/
 
 # System directories
 「开始」菜单/
+Start Menu/
 Program Files/
 Program Files (x86)/
 Windows/
 System32/
 SysWOW64/
+
+# Windows AppData directories
+AppData/
+Application Data/
+Cookies/
+Documents/My Music/
+Documents/My Pictures/
+Documents/My Videos/
+Intel/
+Local Settings/
+My Documents/
+NetHood/
+PrintHood/
+Recent/
+Temporary Internet Files/
+AppData/Local/Microsoft/Windows/INetCache/
+AppData/Local/Microsoft/Windows/Temporary Internet Files/
+AppData/Local/Temporary Internet Files/
+AppData/Roaming/Microsoft/Windows/Start Menu/程序/
 
 # Temporary files
 *.tmp
