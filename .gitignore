@@ -212,6 +212,34 @@ SysWOW64/
 **/Start Menu/**
 **/Start Menu/程序/
 
+# Windows system files and registries
+**/NTUSER.DAT
+**/NTUSER.DAT.LOG*
+**/UsrClass.DAT
+**/UsrClass.DAT.LOG*
+**/system32/config/SAM
+**/system32/config/SYSTEM
+**/system32/config/SOFTWARE
+**/system32/config/SECURITY
+**/system32/config/DEFAULT
+
+# Windows hidden files
+**/.DS_Store
+**/Thumbs.db
+**/ehthumbs.db
+**/Desktop.ini
+**/$RECYCLE.BIN/
+**/.Spotlight-V100/
+**/.Trashes/
+**/.FSEventsDT
+
+# Windows Registry files
+**/*.reg
+**/*.REG
+
+# System restore points
+**/System Volume Information/
+
 # Temporary files
 *.tmp
 *.temp
