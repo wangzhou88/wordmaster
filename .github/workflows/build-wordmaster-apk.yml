@@ -1,0 +1,312 @@
+name: Build WordMaster APK
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '.github/workflows/*.yml'
+      - 'main.py'
+      - 'buildozer.spec'
+      - 'requirements.txt'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build Type'
+        required: false
+        default: 'debug'
+        type: choice
+        options:
+        - debug
+        - release
+
+jobs:
+  build-apk:
+    name: Build APK File
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    
+    env:
+      PYTHON_VERSION: '3.11'
+      ANDROID_API: '31'
+      ANDROID_ARCH: 'arm64-v8a'
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python Environment
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: 📦 Install System Dependencies
+      run: |
+        echo "=== Update System Packages ==="
+        sudo apt-get update -y
+        
+        echo "=== Install Build Tools ==="
+        sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            git \
+            curl \
+            wget \
+            unzip \
+            software-properties-common \
+            apt-transport-https \
+            ca-certificates \
+            gnupg \
+            lsb-release
+            
+        echo "=== Install Compilation Dependencies ==="
+        sudo apt-get install -y --no-install-recommends \
+            libssl-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            libreadline-dev \
+            libsqlite3-dev \
+            llvm \
+            libncurses5-dev \
+            libncursesw5-dev \
+            xz-utils \
+            tk-dev \
+            libffi-dev \
+            liblzma-dev \
+            libstdc++6
+            
+        echo "=== Install Android and Java Tools ==="
+        sudo apt-get install -y --no-install-recommends \
+            openjdk-11-jdk \
+            android-tools-adb \
+            android-tools-fastboot \
+            ant \
+            maven
+            
+        echo "=== Verify Installation ==="
+        java -version
+        javac -version
+        
+    - name: 🔧 Install Build Tools
+      run: |
+        echo "=== Upgrade pip and Basic Tools ==="
+        python -m pip install --upgrade pip setuptools wheel
+        
+        echo "=== Configure pip Mirror ==="
+        mkdir -p ~/.pip
+        cat > ~/.pip/pip.conf << 'EOF'
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple
+trusted-host = pypi.tuna.tsinghua.edu.cn
+timeout = 120
+retries = 3
+EOF
+        
+        echo "=== Install Python Build Dependencies ==="
+        pip install cython==0.29.33
+        
+        echo "=== Install Android Build Tools ==="
+        pip install python-for-android==2024.6.15
+        pip install buildozer==1.5.0
+        
+        echo "=== Verify Build Tools ==="
+        python --version
+        pip --version
+        buildozer --version
+        
+    - name: 🌐 Configure Network and Git
+      run: |
+        echo "=== Configure Git ==="
+        
+        # Configure Git to use mirror source
+        git config --global url."https://ghproxy.com/https://github.com/".insteadOf "https://github.com/"
+        git config --global url."https://ghproxy.com/https://raw.githubusercontent.com/".insteadOf "https://raw.githubusercontent.com/"
+        
+        # Configure Git connection optimization
+        git config --global http.postBuffer 524288000
+        git config --global http.lowSpeedLimit 0
+        git config --global http.lowSpeedTime 999999
+        git config --global core.preloadindex true
+        git config --global core.fscache true
+        git config --global gc.auto 256
+        
+        echo "=== Git Configuration Verification ==="
+        git config --global --list | head -10
+        
+    - name: 📱 Install Android SDK
+      run: |
+        echo "=== Create Android SDK Directory ==="
+        mkdir -p /home/runner/android-sdk
+        
+        echo "=== Download Android Command Line Tools ==="
+        cd /tmp
+        if curl -L -f -o commandlinetools.zip \
+          "https://mirrors.neusoft.edu.cn/android/repository/commandlinetools-linux-9477386_latest.zip"; then
+          echo "Download from domestic mirror successful"
+        else
+          echo "Domestic mirror failed, using official source"
+          curl -L -f -o commandlinetools.zip \
+            "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
+        fi
+        
+        echo "=== Extract and Configure SDK ==="
+        unzip -q commandlinetools.zip
+        mkdir -p /home/runner/android-sdk/cmdline-tools
+        mv cmdline-tools /home/runner/android-sdk/cmdline-tools/latest
+        
+        echo "=== Set Environment Variables ==="
+        echo "ANDROID_HOME=/home/runner/android-sdk" >> $GITHUB_ENV
+        echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
+        
+        export ANDROID_HOME=/home/runner/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        
+        echo "=== Accept Android SDK Licenses ==="
+        yes | sdkmanager --sdk_root=/home/runner/android-sdk --licenses || true
+        
+        echo "=== Install Android SDK Components ==="
+        sdkmanager --sdk_root=/home/runner/android-sdk \
+          "platform-tools" \
+          "platforms;android-${{ env.ANDROID_API }}" \
+          "build-tools;33.0.2"
+        
+        echo "=== Verify SDK Installation ==="
+        sdkmanager --list | head -10
+        
+    - name: 🔍 Check Build Environment
+      run: |
+        echo "=== Verify Build Tool Versions ==="
+        python --version
+        pip --version
+        buildozer --version
+        java -version
+        
+        echo "=== Check Environment Variables ==="
+        echo "ANDROID_HOME: $ANDROID_HOME"
+        echo "JAVA_HOME: $JAVA_HOME"
+        echo "PYTHON_VERSION: ${{ env.PYTHON_VERSION }}"
+        
+    - name: 🚀 Build APK
+      run: |
+        echo "=== Set Build Environment Variables ==="
+        export ANDROID_HOME=/home/runner/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+        
+        echo "=== Clean Previous Build ==="
+        buildozer android clean || true
+        
+        echo "=== Start APK Build ==="
+        echo "Build Type: ${{ github.event.inputs.build_type || 'debug' }}"
+        
+        if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
+          echo "Building Release APK..."
+          buildozer android release --verbose
+        else
+          echo "Building Debug APK..."
+          buildozer android debug --verbose
+        fi
+        
+    - name: 📊 Check Build Results
+      run: |
+        echo "=== Find Build Artifacts ==="
+        
+        if [ -d "bin" ]; then
+          echo "bin directory contents:"
+          ls -la bin/
+        else
+          echo "❌ bin directory not found"
+        fi
+        
+        echo "=== Find APK Files ==="
+        APK_FILES=$(find . -name "*.apk" -type f 2>/dev/null | head -5)
+        if [ -n "$APK_FILES" ]; then
+          echo "Found APK files:"
+          echo "$APK_FILES"
+          for apk in $APK_FILES; do
+            echo "📱 $apk - Size: $(du -h "$apk" | cut -f1)"
+          done
+        else
+          echo "❌ No APK files found"
+        fi
+        
+        echo "=== Find AAB Files ==="
+        AAB_FILES=$(find . -name "*.aab" -type f 2>/dev/null | head -5)
+        if [ -n "$AAB_FILES" ]; then
+          echo "Found AAB files:"
+          echo "$AAB_FILES"
+        else
+          echo "ℹ️ No AAB files found (normal, only for Release builds)"
+        fi
+        
+    - name: 📦 Upload APK Artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: wordmaster-apk-${{ github.sha }}-${{ github.event.inputs.build_type || 'debug' }}
+        path: |
+          bin/*.apk
+          bin/*.aab
+        retention-days: 30
+        
+    - name: 📋 Upload Build Logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs-${{ github.sha }}
+        path: |
+          .buildozer/android/app/build/outputs/
+          .buildozer/android/logs/
+          *.log
+        retention-days: 7
+        
+    - name: 📝 Build Summary
+      if: always()
+      run: |
+        echo "## 📱 WordMaster APK Build Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Build Information" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Type**: \`${{ github.event.inputs.build_type || 'debug' }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Python Version**: \`${{ env.PYTHON_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Time**: \`$(date)\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Runner**: \`${{ runner.os }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 📱 Build Results" >> $GITHUB_STEP_SUMMARY
+        
+        # Check build results
+        BUILD_SUCCESS=false
+        APK_COUNT=0
+        
+        if [ -d "bin" ]; then
+          APK_COUNT=$(find bin -name "*.apk" -type f 2>/dev/null | wc -l)
+          if [ $APK_COUNT -gt 0 ]; then
+            BUILD_SUCCESS=true
+          fi
+        fi
+        
+        if [ "$BUILD_SUCCESS" = true ]; then
+          echo "✅ **APK Build Successful**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Generated APK Files:**" >> $GITHUB_STEP_SUMMARY
+          find bin -name "*.apk" -type f 2>/dev/null | while read apk; do
+            size=$(du -h "$apk" | cut -f1)
+            filename=$(basename "$apk")
+            echo "- 📱 \`$filename\` ($size)" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**📥 Download Link**: Download APK files from Artifacts section at the bottom of the page" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **APK Build Failed**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**🔍 Troubleshooting Suggestions:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check error messages in build logs" >> $GITHUB_STEP_SUMMARY
+          echo "2. Confirm \`buildozer.spec\` configuration file is correct" >> $GITHUB_STEP_SUMMARY
+          echo "3. Verify project dependencies are complete" >> $GITHUB_STEP_SUMMARY
+          echo "4. Check detailed logs in \`.buildozer\` directory" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "*This build is automatically generated by GitHub Actions*" >> $GITHUB_STEP_SUMMARY
