@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # WordMaster Android构建服务
+  wordmaster-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wordmaster-apk-builder
+    working_dir: /app
+    
+    # 挂载项目目录
+    volumes:
+      - .:/app
+      - wordmaster-cache:/root/.cache
+      - wordmaster-gradle:/root/.gradle
+    
+    # 环境变量
+    environment:
+      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+      - ANDROID_HOME=/opt/android-sdk
+      - PYTHONUNBUFFERED=1
+    
+    # 网络设置
+    network_mode: host
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    
+    # 交互式终端
+    stdin_open: true
+    tty: true
+    
+    # 依赖服务
+    depends_on:
+      - docker-host
+    
+    # 命令（可以通过docker-compose run覆盖）
+    command: >
+      bash -c "
+        echo '🚀 WordMaster Docker环境就绪！' &&
+        echo '📁 项目路径: /app' &&
+        echo '📦 可用命令:' &&
+        echo '  p4a --version        # 检查python-for-android版本' &&
+        echo '  p4a apk --private /app --name wordmaster --package com.wordmaster.app' &&
+        echo '  ls -la /app          # 查看项目文件' &&
+        echo '' &&
+        bash
+      "
+  
+  # Docker主机服务（用于Docker-in-Docker支持）
+  docker-host:
+    image: docker:24-dind
+    container_name: docker-host
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=
+      - DOCKER_BUILDKIT=1
+    volumes:
+      - wordmaster-docker-data:/var/lib/docker
+    
+  # 快速构建服务（一次性构建）
+  quick-build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wordmaster-quick-build
+    working_dir: /app
+    
+    volumes:
+      - .:/app
+    
+    environment:
+      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+      - ANDROID_HOME=/opt/android-sdk
+    
+    # 运行构建然后退出
+    command: >
+      bash -c "
+        echo '🚀 开始WordMaster APK构建...' &&
+        p4a apk --private /app --name wordmaster --package com.wordmaster.app --android-api 31 &&
+        echo '✅ 构建完成！' &&
+        ls -la bin/ &&
+        echo 'APK文件已生成在bin目录中'
+      "
+    
+    # 完成后自动删除
+    restart: "no"
+    stdin_open: false
+    tty: false
+
+# 数据卷
+volumes:
+  wordmaster-cache:
+    driver: local
+  wordmaster-gradle:
+    driver: local
+  wordmaster-docker-data:
+    driver: local
+
+# 网络
+networks:
+  default:
+    name: wordmaster-network
+    driver: bridge
