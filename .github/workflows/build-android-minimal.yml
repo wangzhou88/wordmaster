@@ -1,0 +1,278 @@
+name: 📱 WordMaster APK构建 (简化版)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '构建类型'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+      main_file:
+        description: '主文件'
+        required: true
+        default: 'main_simple.py'
+        type: string
+      spec_file:
+        description: 'Spec文件'
+        required: true
+        default: 'buildozer_minimal.spec'
+        type: string
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 🔧 设置Python环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: 🔍 检查构建环境
+      run: |
+        echo "=== Python版本 ==="
+        python --version
+        pip --version
+        
+        echo "=== Android环境 ==="
+        echo "ANDROID_HOME: $ANDROID_HOME"
+        if [ -d "$ANDROID_HOME" ]; then
+          echo "Android SDK目录存在"
+          ls -la $ANDROID_HOME
+          echo "=== 已安装的SDK平台 ==="
+          ls -la $ANDROID_HOME/platforms/
+          echo "=== 已安装的SDK工具 ==="
+          ls -la $ANDROID_HOME/cmdline-tools/
+          echo "=== 已安装的构建工具 ==="
+          ls -la $ANDROID_HOME/build-tools/
+        else
+          echo "Android SDK目录不存在"
+        fi
+        
+        echo "=== Java环境 ==="
+        echo "JAVA_HOME: $JAVA_HOME"
+        if [ -d "$JAVA_HOME" ]; then
+          echo "Java安装目录存在"
+          java -version
+        else
+          echo "Java安装目录不存在"
+        fi
+        
+        echo "=== buildozer版本 ==="
+        buildozer --version || echo "buildozer未安装"
+        
+    - name: 🔄 升级基础工具
+      run: |
+        echo "=== 升级pip和基础工具 ==="
+        python -m pip install --upgrade pip setuptools wheel
+        
+    - name: 🇨🇳 配置pip镜像源
+      run: |
+        echo "=== 配置pip镜像源 ==="
+        mkdir -p ~/.pip
+        echo '[global]' > ~/.pip/pip.conf
+        echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> ~/.pip/pip.conf
+        echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> ~/.pip/pip.conf
+        echo 'timeout = 120' >> ~/.pip/pip.conf
+        echo 'retries = 3' >> ~/.pip/pip.conf
+        echo "Pip镜像配置创建成功"
+        
+    - name: 📦 安装Python构建依赖
+      run: |
+        echo "=== 安装Python构建依赖 ==="
+        pip install cython==0.29.33
+        
+    - name: 📲 安装Android构建工具
+      run: |
+        echo "=== 安装Android构建工具 ==="
+        pip install python-for-android==2024.1.21
+        pip install buildozer==1.5.0
+        
+    - name: 🔍 验证构建工具
+      run: |
+        echo "=== 验证构建工具 ==="
+        python --version
+        pip --version
+        buildozer --version
+        
+    - name: 📝 准备构建文件
+      run: |
+        echo "=== 准备构建文件 ==="
+        echo "主文件: ${{ github.event.inputs.main_file || 'main_simple.py' }}"
+        echo "Spec文件: ${{ github.event.inputs.spec_file || 'buildozer_minimal.spec' }}"
+        
+        # 复制简化版文件为主文件
+        if [ ! -f "main.py" ]; then
+          cp "${{ github.event.inputs.main_file || 'main_simple.py' }}" main.py
+        fi
+        
+        # 复制简化版spec文件
+        if [ ! -f "buildozer.spec" ]; then
+          cp "${{ github.event.inputs.spec_file || 'buildozer_minimal.spec' }}" buildozer.spec
+        fi
+        
+        # 列出构建文件
+        echo "构建文件内容:"
+        cat buildozer.spec
+        
+    - name: ⚙️ 配置Android环境
+      run: |
+        echo "=== 配置Android环境 ==="
+        export ANDROID_HOME=/opt/android-sdk
+        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+        
+        # 创建本地.properties文件
+        mkdir -p ~/.android
+        echo "sdk.dir=$ANDROID_HOME" > ~/.android/local.properties
+        
+        # 设置Java环境
+        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+        
+        echo "=== 验证Android环境 ==="
+        sdkmanager --list || echo "无法列出SDK组件"
+        
+    - name: 🧹 清理之前的构建
+      run: |
+        echo "=== 清理之前的构建 ==="
+        export ANDROID_HOME=/opt/android-sdk
+        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+        buildozer android clean || true
+        
+    - name: 🚀 开始构建APK
+      run: |
+        echo "=== 开始构建APK ==="
+        echo "构建类型: ${{ github.event.inputs.build_type || 'debug' }}"
+        
+        export ANDROID_HOME=/opt/android-sdk
+        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+        
+        if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
+          echo "构建Release版本APK..."
+          buildozer android release --verbose
+        else
+          echo "构建Debug版本APK..."
+          buildozer android debug --verbose
+        fi
+        
+    - name: 🔍 检查构建结果
+      run: |
+        echo "=== 查找构建产物 ==="
+        
+        if [ -d "bin" ]; then
+          echo "bin目录内容:"
+          ls -la bin/
+        else
+          echo "未找到bin目录"
+        fi
+        
+        echo "=== 查找APK文件 ==="
+        APK_FILES=$(find . -name "*.apk" -type f 2>/dev/null | head -5)
+        if [ -n "$APK_FILES" ]; then
+          echo "找到APK文件:"
+          echo "$APK_FILES"
+          for apk in $APK_FILES; do
+            echo "APK文件: $apk - 大小: $(du -h "$apk" | cut -f1)"
+          done
+        else
+          echo "未找到APK文件"
+        fi
+        
+        echo "=== 查找AAB文件 ==="
+        AAB_FILES=$(find . -name "*.aab" -type f 2>/dev/null | head -5)
+        if [ -n "$AAB_FILES" ]; then
+          echo "找到AAB文件:"
+          echo "$AAB_FILES"
+        else
+          echo "未找到AAB文件（正常，仅Release版本会有）"
+        fi
+        
+    - name: 📤 上传APK产物
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: wordmaster-apk-${{ github.sha }}-${{ github.event.inputs.build_type || 'debug' }}
+        path: |
+          bin/*.apk
+          bin/*.aab
+        retention-days: 30
+        
+    - name: 📤 上传构建日志
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs-${{ github.sha }}
+        path: |
+          .buildozer/android/app/build/outputs/
+          .buildozer/android/logs/
+          *.log
+        retention-days: 7
+        
+    - name: 📊 构建总结
+      if: always()
+      run: |
+        echo "## 📱 WordMaster APK构建结果" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔧 构建信息" >> $GITHUB_STEP_SUMMARY
+        echo "- **提交**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **分支**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **构建类型**: \`${{ github.event.inputs.build_type || 'debug' }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Python版本**: \`${{ env.PYTHON_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **构建时间**: \`$(date)\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **运行环境**: \`${{ runner.os }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 📱 构建结果" >> $GITHUB_STEP_SUMMARY
+        
+        # 检查构建结果
+        BUILD_SUCCESS=false
+        APK_COUNT=0
+        
+        if [ -d "bin" ]; then
+          APK_COUNT=$(find bin -name "*.apk" -type f 2>/dev/null | wc -l)
+          if [ $APK_COUNT -gt 0 ]; then
+            BUILD_SUCCESS=true
+          fi
+        fi
+        
+        if [ "$BUILD_SUCCESS" = true ]; then
+          echo "✅ **APK构建成功**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**生成的APK文件:**" >> $GITHUB_STEP_SUMMARY
+          find bin -name "*.apk" -type f 2>/dev/null | while read apk; do
+            size=$(du -h "$apk" | cut -f1)
+            filename=$(basename "$apk")
+            echo "- 📱 \`$filename\` ($size)" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**🔽 下载链接**: 在页面底部的Artifacts区域下载APK文件" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **APK构建失败**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**🔧 故障排除建议:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. 检查构建日志中的错误信息" >> $GITHUB_STEP_SUMMARY
+          echo "2. 确认 \`buildozer.spec\` 配置文件正确" >> $GITHUB_STEP_SUMMARY
+          echo "3. 验证项目依赖是否完整" >> $GITHUB_STEP_SUMMARY
+          echo "4. 查看 \`.buildozer\` 目录中的详细日志" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "*此构建由GitHub Actions自动生成*" >> $GITHUB_STEP_SUMMARY
