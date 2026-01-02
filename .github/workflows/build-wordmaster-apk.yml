@@ -189,7 +189,7 @@ jobs:
         echo "=== Set Build Environment Variables ==="
         export ANDROID_HOME=/home/runner/android-sdk
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+        export JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64
         
         echo "=== Clean Previous Build ==="
         buildozer android clean || true

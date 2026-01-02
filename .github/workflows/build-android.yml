@@ -189,7 +189,7 @@ jobs:
         echo "=== 设置构建环境变量 ==="
         export ANDROID_HOME=/home/runner/android-sdk
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+        export JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64
         
         echo "=== 清理之前的构建 ==="
         buildozer android clean || true
