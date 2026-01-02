@@ -1,0 +1,273 @@
+name: 🛡️ WordMaster APK构建 (安全版)
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '.github/workflows/*.yml'
+      - 'main.py'
+      - 'buildozer.spec'
+      - 'requirements.txt'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '构建类型'
+        required: false
+        default: 'debug'
+        type: choice
+        options:
+        - debug
+        - release
+      main_file:
+        description: '主文件'
+        required: false
+        default: 'main_simple.py'
+      spec_file:
+        description: 'Spec文件'
+        required: false
+        default: 'buildozer_minimal.spec'
+
+jobs:
+  build-apk:
+    name: 构建APK文件
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    
+    env:
+      PYTHON_VERSION: '3.11'
+      ANDROID_API: '31'
+      ANDROID_ARCH: 'arm64-v8a'
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 🐍 设置Python环境
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        
+    - name: 📦 安装系统依赖
+      run: |
+        echo "=== 更新系统包 ==="
+        sudo apt-get update -y
+        
+        echo "=== 安装构建工具 ==="
+        sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            git \
+            curl \
+            wget \
+            unzip \
+            software-properties-common \
+            apt-transport-https \
+            ca-certificates \
+            gnupg \
+            lsb-release
+            
+        echo "=== 安装编译依赖 ==="
+        sudo apt-get install -y --no-install-recommends \
+            libssl-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            libreadline-dev \
+            libsqlite3-dev \
+            llvm \
+            libncurses5-dev \
+            libncursesw5-dev \
+            xz-utils \
+            tk-dev \
+            libffi-dev \
+            liblzma-dev \
+            libstdc++6
+            
+        echo "=== 安装Android和Java工具 ==="
+        sudo apt-get install -y --no-install-recommends \
+            openjdk-17-jdk \
+            android-tools-adb \
+            android-tools-fastboot \
+            ant \
+            maven
+            
+        echo "=== 验证安装 ==="
+        java -version
+        javac -version
+        
+    - name: 🔄 升级基础工具
+      run: |
+        echo "=== 升级pip和基础工具 ==="
+        python -m pip install --upgrade pip setuptools wheel
+        
+    - name: 🇨🇳 配置pip镜像源
+      run: |
+        echo "=== 配置pip镜像源 ==="
+        mkdir -p ~/.pip
+        echo '[global]' > ~/.pip/pip.conf
+        echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> ~/.pip/pip.conf
+        echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> ~/.pip/pip.conf
+        echo 'timeout = 120' >> ~/.pip/pip.conf
+        echo 'retries = 3' >> ~/.pip/pip.conf
+        echo "Pip镜像配置创建成功"
+        
+    - name: 📦 安装Python构建依赖
+      run: |
+        echo "=== 安装Python构建依赖 ==="
+        pip install cython==0.29.33
+        
+    - name: 📲 安装Android构建工具
+      run: |
+        echo "=== 安装Android构建工具 ==="
+        pip install python-for-android==2024.1.21
+        pip install buildozer==1.5.0
+        
+    - name: 🔍 验证构建工具
+      run: |
+        echo "=== 验证构建工具 ==="
+        python --version
+        pip --version
+        buildozer --version
+        
+    - name: 📝 准备构建文件
+      run: |
+        echo "=== 准备构建文件 ==="
+        echo "主文件: ${{ github.event.inputs.main_file || 'main_simple.py' }}"
+        echo "Spec文件: ${{ github.event.inputs.spec_file || 'buildozer_minimal.spec' }}"
+        
+        # 复制简化版文件为主文件
+        if [ ! -f "main.py" ]; then
+          cp "${{ github.event.inputs.main_file || 'main_simple.py' }}" main.py
+        fi
+        
+        # 复制简化版spec文件
+        if [ ! -f "buildozer.spec" ]; then
+          cp "${{ github.event.inputs.spec_file || 'buildozer_minimal.spec' }}" buildozer.spec
+        fi
+        
+        # 列出构建文件
+        echo "构建文件内容:"
+        cat buildozer.spec
+        
+    - name: 🛡️ 安全清理构建环境
+      run: |
+        echo "=== 安全清理构建环境 ==="
+        # 安全的清理方法，避免删除不存在的目录
+        rm -rf .buildozer/android/platform/python-for-android 2>/dev/null || true
+        rm -rf bin/*.apk bin/*.aab 2>/dev/null || true
+        rm -rf .buildozer/android/platform/build 2>/dev/null || true
+        echo "清理完成"
+        
+    - name: ⚙️ 配置Android环境
+      run: |
+        echo "=== 配置Android环境 ==="
+        
+        # 设置Java环境（使用Temurin版本）
+        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+        export PATH=$JAVA_HOME/bin:$PATH
+        
+        # 创建Android SDK目录
+        mkdir -p /opt/android-sdk
+        
+        # 设置Android环境变量
+        export ANDROID_HOME=/opt/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        
+        # 创建本地.properties文件
+        mkdir -p ~/.android
+        echo "sdk.dir=$ANDROID_HOME" > ~/.android/local.properties
+        
+        echo "=== 验证Java环境 ==="
+        java -version
+        
+    - name: 🔧 安装Android SDK (简化版)
+      run: |
+        echo "=== 安装Android SDK (简化版) ==="
+        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+        export ANDROID_HOME=/opt/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        
+        # 创建Android SDK目录
+        mkdir -p $ANDROID_HOME
+        
+        # 下载Android命令行工具
+        cd /tmp
+        echo "下载Android命令行工具..."
+        curl -L -f -o commandlinetools.zip \
+          "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
+        
+        # 解压和配置SDK
+        unzip -q commandlinetools.zip
+        mkdir -p $ANDROID_HOME/cmdline-tools
+        mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+        
+        # 接受许可证
+        yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses || true
+        
+        # 安装必需的SDK组件
+        sdkmanager --sdk_root=$ANDROID_HOME \
+          "platform-tools" \
+          "platforms;android-31" \
+          "build-tools;33.0.2"
+        
+        echo "=== 验证SDK安装 ==="
+        ls -la $ANDROID_HOME/
+        
+    - name: 🚀 构建APK (简化模式)
+      run: |
+        echo "=== 开始构建APK ==="
+        echo "构建类型: ${{ github.event.inputs.build_type || 'debug' }}"
+        
+        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+        export ANDROID_HOME=/opt/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        
+        # 使用简化的构建命令，避免复杂清理
+        if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
+          echo "构建Release版本APK..."
+          buildozer android release --verbose
+        else
+          echo "构建Debug版本APK..."
+          buildozer android debug --verbose
+        fi
+        
+    - name: 📊 检查构建结果
+      run: |
+        echo "=== 查找构建产物 ==="
+        
+        if [ -d "bin" ]; then
+          echo "bin目录内容:"
+          ls -la bin/
+        else
+          echo "❌ 未找到bin目录"
+        fi
+        
+        echo "=== 查找APK文件 ==="
+        APK_FILES=$(find . -name "*.apk" -type f 2>/dev/null | head -5)
+        if [ -n "$APK_FILES" ]; then
+          echo "找到APK文件:"
+          echo "$APK_FILES"
+          for apk in $APK_FILES; do
+            echo "📱 $apk - 大小: $(du -h "$apk" | cut -f1)"
+          done
+        else
+          echo "❌ 未找到APK文件"
+        fi
+        
+        echo "=== 查找AAB文件 ==="
+        AAB_FILES=$(find . -name "*.aab" -type f 2>/dev/null | head -5)
+        if [ -n "$AAB_FILES" ]; then
+          echo "找到AAB文件:"
+          echo "$AAB_FILES"
+        else
+          echo "ℹ️ 未找到AAB文件（正常，仅Release版本会有）"
+        fi
+        
+    - name: 📦 上传APK产物
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: wordmaster-apk-safe-${{ github.sha }}-${{ github.event.inputs.build_type || 'debug' }}
+        path: |
+          bin/*.apk
+          bin/*.aab
+        retention-days: 30
