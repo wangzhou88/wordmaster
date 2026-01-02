@@ -1,0 +1,54 @@
+[build-system]
+requires = ["briefcase"]
+build-backend = "briefcase"
+
+[tool.briefcase]
+project_name = "WordMaster"
+bundle = "com.wordmaster.app"
+version = "1.0.0"
+url = "https://github.com/yourusername/wordmaster"
+license = {file = "LICENSE"}
+author = "WordMaster Team"
+author_email = "wordmaster@example.com"
+
+[tool.briefcase.app.wordmaster]
+formal_name = "WordMaster"
+description = "英语学习应用"
+long_description = "WordMaster是一个专业的英语学习应用，帮助用户通过互动方式学习英语词汇。"
+sources = ["src/wordmaster"]
+requires = [
+    "toga>=0.3.0",
+    "plyer",
+    "pillow",
+    "requests",
+]
+
+[tool.briefcase.app.wordmaster.windows]
+requires = [
+    "toga-winforms>=0.3.0",
+]
+
+[tool.briefcase.app.wordmaster.linux]
+requires = [
+    "toga-gtk>=0.3.0",
+]
+
+[tool.briefcase.app.wordmaster.macOS]
+requires = [
+    "toga-cocoa>=0.3.0",
+    "pyobjc-core",
+    "pyobjc-framework-cocoa",
+]
+
+[tool.briefcase.app.wordmaster.iOS]
+requires = [
+    "toga-iOS>=0.3.0",
+]
+
+[tool.briefcase.app.wordmaster.android]
+requires = [
+    "toga-android>=0.3.0",
+    "plyer",
+    "pillow",
+    "requests",
+]

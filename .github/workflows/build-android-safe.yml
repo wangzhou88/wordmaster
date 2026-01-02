@@ -161,8 +161,8 @@ jobs:
       run: |
         echo "=== 配置Android环境 ==="
         
-        # 设置Java环境（使用Temurin版本）
-        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+        # 设置Java环境（使用系统默认的OpenJDK 17）
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
         export PATH=$JAVA_HOME/bin:$PATH
         
         # 创建Android SDK目录
@@ -170,7 +170,8 @@ jobs:
         
         # 设置Android环境变量
         export ANDROID_HOME=/opt/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        export ANDROID_SDK_ROOT=$ANDROID_HOME
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/34.0.0:$PATH
         
         # 创建本地.properties文件
         mkdir -p ~/.android
@@ -182,9 +183,20 @@ jobs:
     - name: 🔧 安装Android SDK (简化版)
       run: |
         echo "=== 安装Android SDK (简化版) ==="
-        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
         export ANDROID_HOME=/opt/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        export ANDROID_SDK_ROOT=$ANDROID_HOME
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/34.0.0:$PATH
+        
+        echo "=== 验证AIDL工具在PATH中 ==="
+        which aidl || echo "AIDL工具未在PATH中，尝试直接调用"
+        if [ -f "$ANDROID_HOME/build-tools/34.0.0/aidl" ]; then
+          echo "✅ AIDL工具路径: $ANDROID_HOME/build-tools/34.0.0/aidl"
+          $ANDROID_HOME/build-tools/34.0.0/aidl --version
+        else
+          echo "❌ AIDL工具不存在"
+          ls -la $ANDROID_HOME/build-tools/
+        fi
         
         # 创建Android SDK目录
         mkdir -p $ANDROID_HOME
@@ -203,23 +215,47 @@ jobs:
         # 接受许可证
         yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses || true
         
-        # 安装必需的SDK组件
+        # 安装必需的SDK组件（确保包含AIDL工具）
+        echo "=== 安装Android SDK组件 ==="
         sdkmanager --sdk_root=$ANDROID_HOME \
           "platform-tools" \
           "platforms;android-31" \
-          "build-tools;33.0.2"
+          "build-tools;34.0.0" \
+          "build-tools;33.0.2" \
+          "extras;google;m2repository" \
+          "extras;android;m2repository"
         
-        echo "=== 验证SDK安装 ==="
+        echo "=== 验证SDK安装和AIDL工具 ==="
         ls -la $ANDROID_HOME/
+        
+        # 验证AIDL工具是否存在
+        echo "=== 检查AIDL工具 ==="
+        if [ -f "$ANDROID_HOME/build-tools/34.0.0/aidl" ]; then
+          echo "✅ AIDL工具已找到 (build-tools 34.0.0)"
+          $ANDROID_HOME/build-tools/34.0.0/aidl --version
+        elif [ -f "$ANDROID_HOME/build-tools/33.0.2/aidl" ]; then
+          echo "✅ AIDL工具已找到 (build-tools 33.0.2)"
+          $ANDROID_HOME/build-tools/33.0.2/aidl --version
+        else
+          echo "❌ AIDL工具未找到，尝试重新安装..."
+          # 强制重新安装build-tools
+          sdkmanager --sdk_root=$ANDROID_HOME --install "build-tools;34.0.0"
+        fi
         
     - name: 🚀 构建APK (简化模式)
       run: |
         echo "=== 开始构建APK ==="
         echo "构建类型: ${{ github.event.inputs.build_type || 'debug' }}"
         
-        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
         export ANDROID_HOME=/opt/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        export ANDROID_SDK_ROOT=$ANDROID_HOME
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/34.0.0:$PATH
+        
+        echo "=== 构建前验证环境 ==="
+        echo "JAVA_HOME: $JAVA_HOME"
+        echo "ANDROID_HOME: $ANDROID_HOME"
+        echo "PATH包含AIDL: $(echo $PATH | grep -o 'build-tools/34.0.0')"
         
         # 使用简化的构建命令，避免复杂清理
         if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
