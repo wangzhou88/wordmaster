@@ -143,7 +143,7 @@ jobs:
         echo "sdk.dir=$ANDROID_HOME" > ~/.android/local.properties
         
         # 设置Java环境
-        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+        export JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64
         
         echo "=== 验证Android环境 ==="
         sdkmanager --list || echo "无法列出SDK组件"
@@ -162,7 +162,7 @@ jobs:
         
         export ANDROID_HOME=/opt/android-sdk
         export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
-        export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+        export JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64
         
         if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
           echo "构建Release版本APK..."
