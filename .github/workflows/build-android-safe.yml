@@ -180,67 +180,76 @@ jobs:
         echo "=== 验证Java环境 ==="
         java -version
         
-    - name: 🔧 安装Android SDK (简化版)
+    - name: 🔧 安装Android SDK (完整修复版)
       run: |
-        echo "=== 安装Android SDK (简化版) ==="
+        echo "=== 安装Android SDK (完整修复版) ==="
+        
+        # 设置基础环境变量
         export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
         export ANDROID_HOME=/opt/android-sdk
         export ANDROID_SDK_ROOT=$ANDROID_HOME
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/34.0.0:$PATH
+        export PATH=$JAVA_HOME/bin:$PATH
         
-        echo "=== 验证AIDL工具在PATH中 ==="
-        which aidl || echo "AIDL工具未在PATH中，尝试直接调用"
-        if [ -f "$ANDROID_HOME/build-tools/34.0.0/aidl" ]; then
-          echo "✅ AIDL工具路径: $ANDROID_HOME/build-tools/34.0.0/aidl"
-          $ANDROID_HOME/build-tools/34.0.0/aidl --version
-        else
-          echo "❌ AIDL工具不存在"
-          ls -la $ANDROID_HOME/build-tools/
-        fi
+        echo "=== 验证Java环境 ==="
+        java -version
+        echo "JAVA_HOME: $JAVA_HOME"
         
-        # 创建Android SDK目录
+        # 创建Android SDK目录结构
         mkdir -p $ANDROID_HOME
+        mkdir -p /tmp/android-sdk-temp
         
-        # 下载Android命令行工具
-        cd /tmp
-        echo "下载Android命令行工具..."
+        echo "=== 下载Android命令行工具 ==="
+        cd /tmp/android-sdk-temp
         curl -L -f -o commandlinetools.zip \
           "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
         
-        # 解压和配置SDK
+        echo "=== 解压和配置命令行工具 ==="
         unzip -q commandlinetools.zip
         mkdir -p $ANDROID_HOME/cmdline-tools
         mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
         
-        # 接受许可证
+        # 更新PATH以包含sdkmanager
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+        
+        echo "=== 接受SDK许可证 ==="
         yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses || true
         
-        # 安装必需的SDK组件（确保包含AIDL工具）
-        echo "=== 安装Android SDK组件 ==="
+        echo "=== 安装核心SDK组件 ==="
         sdkmanager --sdk_root=$ANDROID_HOME \
           "platform-tools" \
           "platforms;android-31" \
-          "build-tools;34.0.0" \
-          "build-tools;33.0.2" \
-          "extras;google;m2repository" \
-          "extras;android;m2repository"
+          "build-tools;34.0.0"
         
-        echo "=== 验证SDK安装和AIDL工具 ==="
+        echo "=== 验证SDK安装结果 ==="
         ls -la $ANDROID_HOME/
+        echo "=== 检查build-tools目录 ==="
+        ls -la $ANDROID_HOME/build-tools/ 2>/dev/null || echo "build-tools目录不存在"
         
-        # 验证AIDL工具是否存在
-        echo "=== 检查AIDL工具 ==="
+        echo "=== 验证AIDL工具安装 ==="
         if [ -f "$ANDROID_HOME/build-tools/34.0.0/aidl" ]; then
           echo "✅ AIDL工具已找到 (build-tools 34.0.0)"
           $ANDROID_HOME/build-tools/34.0.0/aidl --version
-        elif [ -f "$ANDROID_HOME/build-tools/33.0.2/aidl" ]; then
-          echo "✅ AIDL工具已找到 (build-tools 33.0.2)"
-          $ANDROID_HOME/build-tools/33.0.2/aidl --version
+          export PATH=$ANDROID_HOME/build-tools/34.0.0:$PATH
         else
-          echo "❌ AIDL工具未找到，尝试重新安装..."
-          # 强制重新安装build-tools
-          sdkmanager --sdk_root=$ANDROID_HOME --install "build-tools;34.0.0"
+          echo "❌ AIDL工具未找到，尝试备用方案..."
+          # 尝试安装备用版本
+          sdkmanager --sdk_root=$ANDROID_HOME "build-tools;33.0.2"
+          if [ -f "$ANDROID_HOME/build-tools/33.0.2/aidl" ]; then
+            echo "✅ AIDL工具已找到 (build-tools 33.0.2)"
+            $ANDROID_HOME/build-tools/33.0.2/aidl --version
+            export PATH=$ANDROID_HOME/build-tools/33.0.2:$PATH
+          else
+            echo "❌ 所有AIDL工具安装失败"
+            exit 1
+          fi
         fi
+        
+        # 最终PATH配置
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/34.0.0:$PATH
+        echo "=== 最终PATH配置 ==="
+        echo "PATH: $PATH"
+        echo "=== 验证aidl命令 ==="
+        which aidl || echo "aidl命令不在PATH中"
         
     - name: 🚀 构建APK (简化模式)
       run: |
