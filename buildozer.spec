@@ -5,7 +5,7 @@ package.domain = com.wordmaster.app
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,wav,mp3,json,txt,md,pkl,db,pyc,pyo
 version = 1.0.0
-requirements = python3,kivy>=2.0.0,sqlite3,requests,plyer,pydub,SpeechRecognition,Pillow,pygame
+requirements = python3,kivy>=2.0.0,sqlite3,requests,plyer,Pillow
 orientation = portrait
 fullscreen = 0
 display.softinput_mode = pan

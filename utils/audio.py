@@ -6,8 +6,70 @@ import wave
 import struct
 import shutil
 from gtts import gTTS
-import pygame
-from pygame import mixer
+
+# Audio playback implementation for Android
+class AudioPlayer:
+    _initialized = False
+    _player = None
+    
+    @staticmethod
+    def initialize():
+        if AudioPlayer._initialized:
+            return True
+            
+        try:
+            # Using plyer for audio playback on Android
+            from plyer import audio
+            AudioPlayer._player = audio
+            AudioPlayer._initialized = True
+            print("音频系统初始化成功")
+            return True
+        except Exception as e:
+            print(f"初始化音频系统失败: {e}")
+            return False
+    
+    @staticmethod
+    def play(file_path):
+        if not AudioPlayer._initialized:
+            AudioPlayer.initialize()
+        
+        if not AudioPlayer._player:
+            print("音频系统未就绪")
+            return False
+        
+        try:
+            AudioPlayer._player.play(file_path)
+            return True
+        except Exception as e:
+            print(f"音频播放失败: {e}")
+            return False
+    
+    @staticmethod
+    def stop():
+        if not AudioPlayer._initialized:
+            return
+        
+        try:
+            AudioPlayer._player.stop()
+        except:
+            pass
+
+# Simple audio converter for Android
+class AudioConverter:
+    @staticmethod
+    def convert_mp3_to_wav(mp3_path, wav_path):
+        """Simple conversion by copying the file if conversion fails"""
+        try:
+            if not wav_path.endswith('.wav'):
+                wav_path = wav_path.rsplit('.', 1)[0] + '.wav'
+            
+            # Try to copy the file as a fallback
+            shutil.copy(mp3_path, wav_path)
+            print(f"使用复制方式转换音频文件: {mp3_path} -> {wav_path}")
+            return True
+        except Exception as e:
+            print(f"转换MP3到WAV失败: {e}")
+            return False
 
 class AudioManager:
     _instance = None
@@ -37,33 +99,22 @@ class AudioManager:
         self._reinit_audio()
     
     def _reinit_audio(self):
+        """Initialize audio system for Android"""
         try:
-            if not pygame.get_init():
-                pygame.init()
-            
-            mixer.quit()
-            mixer.init(frequency=22050, size=-16, channels=2, buffer=1024)
+            # Initialize audio player for Android using plyer
+            AudioPlayer.initialize()
             print("音频系统初始化成功")
         except Exception as e:
             print(f"初始化音频系统失败: {e}")
-            try:
-                mixer.init(frequency=16000, size=-16, channels=1, buffer=512)
-                print("使用备用音频配置初始化成功")
-            except:
-                pass
     
     def _ensure_audio(self):
+        """Ensure audio system is ready"""
         try:
-            if not pygame.get_init():
-                pygame.init()
+            # Check if audio player is initialized
+            if not AudioPlayer._initialized:
+                AudioPlayer.initialize()
             
-            if not mixer.get_init():
-                try:
-                    mixer.init(frequency=22050, size=-16, channels=2, buffer=1024)
-                except:
-                    mixer.init(frequency=16000, size=-16, channels=1, buffer=512)
-            
-            return True
+            return AudioPlayer._initialized
         except Exception as e:
             print(f"音频系统检查失败: {e}")
             return False
@@ -161,17 +212,16 @@ class AudioManager:
             return result
     
     def _convert_to_wav(self, mp3_path, wav_path):
+        """Convert MP3 to WAV using AudioConverter for Android compatibility"""
         try:
-            from pydub import AudioSegment
-            sound = AudioSegment.from_mp3(mp3_path)
-            sound.export(wav_path, format="wav")
+            # Use AudioConverter for Android compatibility
+            return AudioConverter.convert_mp3_to_wav(mp3_path, wav_path)
         except Exception as e:
             print(f"转换MP3到WAV失败: {e}")
-            if not wav_path.endswith('.wav'):
-                wav_path = wav_path.rsplit('.', 1)[0] + '.wav'
-            shutil.copy(mp3_path, wav_path)
+            return False
     
     def play_audio(self, file_path):
+        """Play audio file using Android-compatible player"""
         if not file_path or not os.path.exists(file_path):
             print(f"音频文件不存在: {file_path}")
             return False
@@ -186,21 +236,21 @@ class AudioManager:
                 print(f"音频文件为空: {file_path}")
                 return False
             
-            mixer.music.load(file_path)
-            mixer.music.play()
-            
-            return True
+            # Use AudioPlayer for Android compatibility
+            return AudioPlayer.play(file_path)
         except Exception as e:
             print(f"音频播放失败: {e}")
             return False
     
     def play_audio_nonblocking(self, file_path):
+        """Non-blocking audio playback"""
         return self.play_audio(file_path)
     
     def stop_audio(self):
+        """Stop audio playback"""
         try:
-            if mixer.get_init():
-                mixer.music.stop()
+            # Use AudioPlayer for Android compatibility
+            AudioPlayer.stop()
         except:
             pass
     

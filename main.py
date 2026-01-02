@@ -28,12 +28,8 @@ from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.utils import get_color_from_hex
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import io
 from datetime import datetime, timedelta
-import numpy as np
 
 # 设置中文字体支持
 from kivy.core.text import LabelBase

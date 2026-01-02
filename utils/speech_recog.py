@@ -1,11 +1,17 @@
-import speech_recognition as sr
 import os
 import tempfile
-from pydub import AudioSegment
+import shutil
 
+# Simplified SpeechRecognizer for Android compatibility
 class SpeechRecognizer:
     def __init__(self):
-        self.recognizer = sr.Recognizer()
+        # Using plyer for microphone access on Android
+        try:
+            from plyer import speech
+            self.speech = speech
+        except ImportError:
+            self.speech = None
+            print("语音识别不可用: 未找到speech模块")
     
     def recognize_from_microphone(self, language="en-US", timeout=5):
         """
@@ -14,35 +20,10 @@ class SpeechRecognizer:
         :param timeout: 超时时间(秒)
         :return: 识别的文本
         """
-        try:
-            with sr.Microphone() as source:
-                # 调整麦克风灵敏度
-                self.recognizer.adjust_for_ambient_noise(source)
-                
-                print("请说话...")
-                try:
-                    # 监听麦克风输入
-                    audio = self.recognizer.listen(source, timeout=timeout)
-                except sr.WaitTimeoutError:
-                    print("监听超时，请重试")
-                    return None
-                
-                print("正在识别...")
-                
-                # 使用Google语音识别
-                try:
-                    text = self.recognizer.recognize_google(audio, language=language)
-                    print(f"识别结果: {text}")
-                    return text.lower()
-                except sr.UnknownValueError:
-                    print("无法识别语音")
-                    return None
-                except sr.RequestError as e:
-                    print(f"无法连接到Google语音识别服务: {e}")
-                    return None
-        except Exception as e:
-            print(f"语音识别失败: {e}")
-            return None
+        # This is a simplified implementation for Android
+        # Real speech recognition would require additional services
+        print("Android平台上的语音识别功能已简化")
+        return None
     
     def recognize_from_file(self, file_path, language="en-US"):
         """
@@ -51,46 +32,10 @@ class SpeechRecognizer:
         :param language: 语言代码 (默认: 'en-US' 英语)
         :return: 识别的文本
         """
-        try:
-            # 检查文件是否存在
-            if not os.path.exists(file_path):
-                print(f"音频文件不存在: {file_path}")
-                return None
-            
-            # 转换音频文件格式（如果需要）
-            temp_file = None
-            if not file_path.lower().endswith('.wav'):
-                temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-                temp_file.close()
-                
-                # 使用pydub转换格式
-                audio = AudioSegment.from_file(file_path)
-                audio.export(temp_file.name, format="wav")
-                
-                file_path = temp_file.name
-            
-            # 读取音频文件
-            with sr.AudioFile(file_path) as source:
-                audio = self.recognizer.record(source)
-                
-                # 使用Google语音识别
-                try:
-                    text = self.recognizer.recognize_google(audio, language=language)
-                    print(f"识别结果: {text}")
-                    return text.lower()
-                except sr.UnknownValueError:
-                    print("无法识别语音")
-                    return None
-                except sr.RequestError as e:
-                    print(f"无法连接到Google语音识别服务: {e}")
-                    return None
-                finally:
-                    # 删除临时文件
-                    if temp_file and os.path.exists(temp_file.name):
-                        os.unlink(temp_file.name)
-        except Exception as e:
-            print(f"语音识别失败: {e}")
-            return None
+        # This is a simplified implementation for Android
+        # Real speech recognition would require additional services
+        print("Android平台上的语音识别功能已简化")
+        return None
     
     def compare_with_text(self, recognized_text, expected_text):
         """
